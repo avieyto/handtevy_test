@@ -22,7 +22,7 @@ export class PayDateCalculatorService {
     });
   }
 
-  public calculateAndCheckWithDeposit(dto: IPayDateCalculatorDTO): Date {
+  protected calculateAndCheckWithDeposit(dto: IPayDateCalculatorDTO): Date {
     return dto.hasDirectDeposit
       ? this.calculate(dto)
       : this.calculate({
@@ -85,7 +85,7 @@ export class PayDateCalculatorService {
     });
   }
 
-  protected strategyForNextPayDay = (dto: IPayDateCalculatorDTO): Date => {
+  protected strategyForNextPayDay(dto: IPayDateCalculatorDTO): Date {
     const strategies = [
       {
         applies: () => dto.paySpan === PaySpan.WEEKLY,
@@ -114,11 +114,11 @@ export class PayDateCalculatorService {
       payDay: nextPayDay,
       loopType: LoopType.FORWARD,
     });
-  };
+  }
 
-  protected strategyForWeekend = (dto: IPayDateCalculatorDTO): Date => {
+  protected strategyForWeekend(dto: IPayDateCalculatorDTO): Date {
     const daysToAdd = dto.loopType === LoopType.REVERSE ? -1 : 1;
     const newDueDate = addDays(dto.payDay, daysToAdd);
     return this.calculate({ ...dto, payDay: newDueDate });
-  };
+  }
 }

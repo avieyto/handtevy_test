@@ -214,7 +214,9 @@ describe('PayDateCalculatorService', () => {
 
       it('should throw when holidays block all available dates creating a cycle', () => {
         // All weekdays Jan 8–22 are holidays → backward traversal enters a cycle
-        const allBlocked = Array.from({ length: 15 }, (_, i) => d(`2024-01-${String(i + 8).padStart(2, '0')}`));
+        const allBlocked = Array.from({ length: 15 }, (_, i) =>
+          d(`2024-01-${String(i + 8).padStart(2, '0')}`),
+        );
         expect(() =>
           service.calculateDueDate(
             d('2024-01-01'),
