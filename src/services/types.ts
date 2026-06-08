@@ -16,4 +16,5 @@ export interface IPayDateCalculatorDTO {
   payDay: Date;
   hasDirectDeposit: boolean;
   loopType?: LoopType;
+  depth?: number;
 }

@@ -1,6 +1,8 @@
 import { addDays, addMonths, getDaysDiff } from './utils';
 import { IPayDateCalculatorDTO, LoopType, PaySpan } from './types';
 
+const MAX_ITERATIONS = 365;
+
 export class PayDateCalculatorService {
   public calculateDueDate(
     fundDate: Date,
@@ -16,6 +18,7 @@ export class PayDateCalculatorService {
       paySpan,
       hasDirectDeposit,
       loopType: LoopType.FORWARD,
+      depth: 0,
     });
   }
 
@@ -29,6 +32,15 @@ export class PayDateCalculatorService {
   }
 
   protected calculate(dto: IPayDateCalculatorDTO): Date {
+    const depth = (dto.depth ?? 0) + 1;
+    if (depth > MAX_ITERATIONS) {
+      throw new Error(
+        `Pay date calculation exceeded ${MAX_ITERATIONS} iterations. ` +
+          'Verify that paySpan is a valid value and that holidays do not block all available dates.',
+      );
+    }
+    dto = { ...dto, depth };
+
     const dueDate = dto.payDay;
     const isDueDayHoliday = dto.holidays.find(
       (holiday) =>
@@ -95,7 +107,8 @@ export class PayDateCalculatorService {
       },
     ];
     const nextPayDay =
-      strategies.find((strategy) => strategy.applies())?.apply() ?? dto.payDay;
+      strategies.find((strategy) => strategy.applies())?.apply() ??
+      addDays(dto.payDay, 1);
     return this.calculateAndCheckWithDeposit({
       ...dto,
       payDay: nextPayDay,
