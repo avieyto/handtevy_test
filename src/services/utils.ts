@@ -12,3 +12,9 @@ export const addDays = (date: Date, days: number): Date => {
   newDate.setDate(date.getDate() + days);
   return newDate;
 };
+
+export const addMonths = (date: Date, months: number): Date => {
+  const newDate = new Date(date);
+  newDate.setMonth(date.getMonth() + months);
+  return newDate;
+};
