@@ -1,5 +1,5 @@
-import {addDays, addMonths, getDaysDiff} from './utils';
-import {IPayDateCalculatorDTO, LoopType, PaySpan} from './types';
+import { addDays, addMonths, getDaysDiff } from './utils';
+import { IPayDateCalculatorDTO, LoopType, PaySpan } from './types';
 
 export class PayDateCalculatorService {
   public calculateDueDate(
@@ -15,15 +15,17 @@ export class PayDateCalculatorService {
       payDay,
       paySpan,
       hasDirectDeposit,
-      loopType: LoopType.FORWARD
+      loopType: LoopType.FORWARD,
     });
   }
 
   public calculateAndCheckWithDeposit(dto: IPayDateCalculatorDTO): Date {
-    return dto.hasDirectDeposit ? this.calculate(dto) : this.calculate({
-      ...dto,
-      payDay: addDays(dto.payDay, 1),
-    });
+    return dto.hasDirectDeposit
+      ? this.calculate(dto)
+      : this.calculate({
+          ...dto,
+          payDay: addDays(dto.payDay, 1),
+        });
   }
 
   protected calculate(dto: IPayDateCalculatorDTO): Date {
@@ -64,7 +66,11 @@ export class PayDateCalculatorService {
 
   protected strategyForHolidays(dto: IPayDateCalculatorDTO): Date {
     const newPayDay = addDays(dto.payDay, -1);
-    return this.calculate({ ...dto, payDay: newPayDay, loopType: LoopType.REVERSE });
+    return this.calculate({
+      ...dto,
+      payDay: newPayDay,
+      loopType: LoopType.REVERSE,
+    });
   }
 
   protected strategyForNextPayDay = (dto: IPayDateCalculatorDTO): Date => {
@@ -90,7 +96,11 @@ export class PayDateCalculatorService {
     ];
     const nextPayDay =
       strategies.find((strategy) => strategy.applies())?.apply() ?? dto.payDay;
-    return this.calculateAndCheckWithDeposit({ ...dto, payDay: nextPayDay, loopType: LoopType.FORWARD });
+    return this.calculateAndCheckWithDeposit({
+      ...dto,
+      payDay: nextPayDay,
+      loopType: LoopType.FORWARD,
+    });
   };
 
   protected strategyForWeekend = (dto: IPayDateCalculatorDTO): Date => {

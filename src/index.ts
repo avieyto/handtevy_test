@@ -1,5 +1,1 @@
-const main = (): void => {
-  console.log('Hello, TypeScript!');
-};
-
-main();
+export * from './services';
