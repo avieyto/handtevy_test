@@ -13,7 +13,7 @@ export interface IPayDateCalculatorDTO {
   fundDate: Date;
   holidays: Date[];
   paySpan: string;
-  payDay: Date;
+  dueDay: Date;
   hasDirectDeposit: boolean;
   loopType?: LoopType;
   depth?: number;

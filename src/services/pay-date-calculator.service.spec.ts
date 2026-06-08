@@ -18,6 +18,83 @@ describe('PayDateCalculatorService', () => {
     return new Date(year, month - 1, day);
   };
 
+  // Helper to call protected method
+  const findFirst = (fundDate: Date, payDay: Date, paySpan: string): Date =>
+    (service as any).findClosestPayDateAfterFundDay(fundDate, payDay, paySpan);
+
+  describe('findFirstPayDateAfterFundDay', () => {
+    describe('payDay is before fundDate — advances forward', () => {
+      it('should advance weekly until strictly after fundDate', () => {
+        // payDay: Jan 1, fundDate: Jan 15 → Jan 1 → Jan 8 → Jan 15 (still ≤) → Jan 22
+        expect(findFirst(d('2024-01-15'), d('2024-01-01'), 'WEEKLY')).toEqual(
+          d('2024-01-22'),
+        );
+      });
+
+      it('should advance biweekly until strictly after fundDate', () => {
+        // payDay: Jan 1, fundDate: Jan 15 → Jan 1 → Jan 15 (still ≤) → Jan 29
+        expect(findFirst(d('2024-01-15'), d('2024-01-01'), 'BIWEEKLY')).toEqual(
+          d('2024-01-29'),
+        );
+      });
+
+      it('should advance monthly until strictly after fundDate', () => {
+        // payDay: Jan 1, fundDate: Jan 15 → Jan 1 → Feb 1 (after Jan 15)
+        expect(findFirst(d('2024-01-15'), d('2024-01-01'), 'MONTHLY')).toEqual(
+          d('2024-02-01'),
+        );
+      });
+    });
+
+    describe('payDay is after fundDate — rewinds first, then advances once', () => {
+      it('should rewind weekly payDay far in the future to find the closest date after fundDate', () => {
+        // payDay: Jun 15 2020, fundDate: Jan 1 2020, WEEKLY
+        // Rewind to Dec 30 2019 (first date ≤ Jan 1), then advance to Jan 6 2020
+        expect(findFirst(d('2020-01-01'), d('2020-06-15'), 'WEEKLY')).toEqual(
+          d('2020-01-06'),
+        );
+      });
+
+      it('should rewind biweekly payDay to find the closest date after fundDate', () => {
+        // payDay: Jan 29, fundDate: Jan 1 → rewind to Jan 1 (≤), advance to Jan 15
+        expect(findFirst(d('2024-01-01'), d('2024-01-29'), 'BIWEEKLY')).toEqual(
+          d('2024-01-15'),
+        );
+      });
+
+      it('should rewind monthly payDay to find the closest date after fundDate', () => {
+        // payDay: Mar 1, fundDate: Jan 15 → rewind to Feb 1 (≤ Jan 15? no, Feb 1 > Jan 15)
+        // → rewind to Jan 1 (≤ Jan 15), advance to Feb 1
+        expect(findFirst(d('2024-01-15'), d('2024-03-01'), 'MONTHLY')).toEqual(
+          d('2024-02-01'),
+        );
+      });
+    });
+
+    describe('payDay is exactly on fundDate — must advance', () => {
+      it('should advance weekly when payDay equals fundDate', () => {
+        expect(findFirst(d('2024-01-15'), d('2024-01-15'), 'WEEKLY')).toEqual(
+          d('2024-01-22'),
+        );
+      });
+
+      it('should advance monthly when payDay equals fundDate', () => {
+        expect(findFirst(d('2024-01-15'), d('2024-01-15'), 'MONTHLY')).toEqual(
+          d('2024-02-15'),
+        );
+      });
+    });
+
+    describe('payDay is one span before fundDate', () => {
+      it('should return the very next weekly pay date after fundDate', () => {
+        // payDay: Jan 8, fundDate: Jan 14 → Jan 8 ≤ Jan 14 → advance to Jan 15
+        expect(findFirst(d('2024-01-14'), d('2024-01-08'), 'WEEKLY')).toEqual(
+          d('2024-01-15'),
+        );
+      });
+    });
+  });
+
   describe('calculateDueDate', () => {
     describe('direct deposit', () => {
       it('should use payDay as-is when hasDirectDeposit is true', () => {
@@ -34,8 +111,8 @@ describe('PayDateCalculatorService', () => {
       });
 
       it('should add 1 day to payDay when hasDirectDeposit is false', () => {
-        // fundDate: Jan 1, payDay: Jan 15 (Mon, 14 days, no weekend/holiday)
-        // DD=false → +1 → Jan 16 (Tue) → not weekend, not holiday, 15>=10 → Jan 16
+        // fundDate: Jan 1, payDay: Jan 15 → findClosest normalizes to Jan 8
+        // DD=false → +1 → Jan 9 (Mon) → 8<10 → weekly +7 → Jan 16 → DD=false +1 → Jan 17
         const result = service.calculateDueDate(
           d('2024-01-01'),
           [],
@@ -43,7 +120,7 @@ describe('PayDateCalculatorService', () => {
           d('2024-01-15'),
           false,
         );
-        expect(result).toEqual(d('2024-01-16'));
+        expect(result).toEqual(d('2024-01-17'));
       });
     });
 
@@ -63,8 +140,8 @@ describe('PayDateCalculatorService', () => {
       });
 
       it('should skip Sunday moving forward (DD=false)', () => {
-        // fundDate: Jan 1, payDay: Jan 14 (Sun, 13 days)
-        // DD=false → +1 → Jan 15 (Mon) → not weekend, not holiday, 14>=10 → Jan 15
+        // fundDate: Jan 1, payDay: Jan 14 (Sun) → findClosest normalizes to Jan 7
+        // DD=false → +1 → Jan 8 (Mon) → 7<10 → weekly +7 → Jan 15 → DD=false +1 → Jan 16
         const result = service.calculateDueDate(
           d('2024-01-01'),
           [],
@@ -72,7 +149,7 @@ describe('PayDateCalculatorService', () => {
           d('2024-01-14'),
           false,
         );
-        expect(result).toEqual(d('2024-01-15'));
+        expect(result).toEqual(d('2024-01-16'));
       });
     });
 
@@ -93,8 +170,8 @@ describe('PayDateCalculatorService', () => {
       });
 
       it('should skip the holiday when DD=false (+1 lands after the holiday)', () => {
-        // fundDate: Jan 1, payDay: Jan 15 (Mon, holiday, 14 days)
-        // DD=false → +1 → Jan 16 (Tue) → not a holiday, not weekend, 15>=10 → Jan 16
+        // fundDate: Jan 1, payDay: Jan 15 (holiday) → findClosest normalizes to Jan 8
+        // DD=false → +1 → Jan 9 → 8<10 → weekly +7 → Jan 16 → DD=false +1 → Jan 17
         const result = service.calculateDueDate(
           d('2024-01-01'),
           [d('2024-01-15')],
@@ -102,7 +179,7 @@ describe('PayDateCalculatorService', () => {
           d('2024-01-15'),
           false,
         );
-        expect(result).toEqual(d('2024-01-16'));
+        expect(result).toEqual(d('2024-01-17'));
       });
 
       it('should not treat same day-of-month in a different month as a holiday', () => {
