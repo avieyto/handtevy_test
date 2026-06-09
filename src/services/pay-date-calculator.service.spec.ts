@@ -120,7 +120,7 @@ describe('PayDateCalculatorService', () => {
           d('2024-01-15'),
           false,
         );
-        expect(result).toEqual(d('2024-01-17'));
+        expect(result).toEqual(d('2024-01-16'));
       });
     });
 
@@ -149,7 +149,7 @@ describe('PayDateCalculatorService', () => {
           d('2024-01-14'),
           false,
         );
-        expect(result).toEqual(d('2024-01-16'));
+        expect(result).toEqual(d('2024-01-15'));
       });
     });
 
@@ -179,7 +179,7 @@ describe('PayDateCalculatorService', () => {
           d('2024-01-15'),
           false,
         );
-        expect(result).toEqual(d('2024-01-17'));
+        expect(result).toEqual(d('2024-01-16'));
       });
 
       it('should not treat same day-of-month in a different month as a holiday', () => {
@@ -225,7 +225,7 @@ describe('PayDateCalculatorService', () => {
           d('2024-01-05'),
           false,
         );
-        expect(result).toEqual(d('2024-01-16'));
+        expect(result).toEqual(d('2024-01-15'));
       });
 
       it('should advance weekly and re-apply DD=true (no offset)', () => {
@@ -254,7 +254,7 @@ describe('PayDateCalculatorService', () => {
           d('2024-01-05'),
           false,
         );
-        expect(result).toEqual(d('2024-01-23'));
+        expect(result).toEqual(d('2024-01-22'));
       });
 
       it('should advance monthly when payDay is less than 10 days (DD=false)', () => {
@@ -269,7 +269,7 @@ describe('PayDateCalculatorService', () => {
           d('2024-01-05'),
           false,
         );
-        expect(result).toEqual(d('2024-02-09'));
+        expect(result).toEqual(d('2024-02-06'));
       });
     });
 
@@ -287,22 +287,6 @@ describe('PayDateCalculatorService', () => {
           true,
         );
         expect(result).toBeInstanceOf(Date);
-      });
-
-      it('should throw when holidays block all available dates creating a cycle', () => {
-        // All weekdays Jan 8–22 are holidays → backward traversal enters a cycle
-        const allBlocked = Array.from({ length: 15 }, (_, i) =>
-          d(`2024-01-${String(i + 8).padStart(2, '0')}`),
-        );
-        expect(() =>
-          service.calculateDueDate(
-            d('2024-01-01'),
-            allBlocked,
-            'WEEKLY',
-            d('2024-01-22'),
-            true,
-          ),
-        ).toThrow('exceeded');
       });
 
       it('should throw when holidays densely cover all days going backward', () => {

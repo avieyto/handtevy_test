@@ -11,9 +11,10 @@ export enum LoopType {
 
 export interface IPayDateCalculatorDTO {
   fundDate: Date;
+  payDay: Date;
   holidays: Date[];
   paySpan: string;
-  dueDay: Date;
+  currentDueDay: Date;
   hasDirectDeposit: boolean;
   loopType?: LoopType;
   depth?: number;

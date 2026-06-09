@@ -11,10 +11,12 @@ export class PayDateCalculatorService {
     payDay: Date,
     hasDirectDeposit: boolean,
   ): Date {
+    const closestPayDate = this.findClosestPayDateAfterFundDay(fundDate, payDay, paySpan);
     return this.calculateAndCheckWithDeposit({
       fundDate,
       holidays,
-      dueDay: this.findClosestPayDateAfterFundDay(fundDate, payDay, paySpan),
+      payDay: closestPayDate,
+      currentDueDay: closestPayDate,
       paySpan,
       hasDirectDeposit,
       loopType: LoopType.FORWARD,
@@ -51,22 +53,22 @@ export class PayDateCalculatorService {
       ? this.calculate(dto)
       : this.calculate({
           ...dto,
-          dueDay: addDays(dto.dueDay, 1),
+          currentDueDay: addDays(dto.currentDueDay, 1),
         });
   }
 
-  protected calculate(dto: IPayDateCalculatorDTO): Date {
-    const depth = (dto.depth ?? 0) + 1;
+  protected calculate(dtoParam: IPayDateCalculatorDTO): Date {
+    const depth = (dtoParam.depth ?? 0) + 1;
     if (depth > MAX_ITERATIONS) {
       throw new Error(
         `Pay date calculation exceeded ${MAX_ITERATIONS} iterations. ` +
           'Verify that paySpan is a valid value and that holidays do not block all available dates.',
       );
     }
-    dto = { ...dto, depth };
+    const dto = { ...dtoParam, depth };
 
-    const dueDate = dto.dueDay;
-    const isDueDayHoliday = dto.holidays.find(
+    const dueDate = dto.currentDueDay;
+    const isDueDayHoliday = dto.holidays.some(
       (holiday) =>
         holiday.getFullYear() === dueDate.getFullYear() &&
         holiday.getMonth() === dueDate.getMonth() &&
@@ -101,10 +103,10 @@ export class PayDateCalculatorService {
   }
 
   protected strategyForHolidays(dto: IPayDateCalculatorDTO): Date {
-    const newPayDay = addDays(dto.dueDay, -1);
+    const newPayDay = addDays(dto.currentDueDay, -1);
     return this.calculate({
       ...dto,
-      dueDay: newPayDay,
+      currentDueDay: newPayDay,
       loopType: LoopType.REVERSE,
     });
   }
@@ -114,35 +116,36 @@ export class PayDateCalculatorService {
       {
         applies: () => dto.paySpan === PaySpan.WEEKLY,
         apply: () => {
-          return addDays(dto.dueDay, 7);
+          return addDays(dto.payDay, 7);
         },
       },
       {
         applies: () => dto.paySpan === PaySpan.BIWEEKLY,
         apply: () => {
-          return addDays(dto.dueDay, 14);
+          return addDays(dto.payDay, 14);
         },
       },
       {
         applies: () => dto.paySpan === PaySpan.MONTHLY,
         apply: () => {
-          return addMonths(dto.dueDay, 1);
+          return addMonths(dto.payDay, 1);
         },
       },
     ];
     const nextPayDay =
       strategies.find((strategy) => strategy.applies())?.apply() ??
-      addDays(dto.dueDay, 1);
+      addDays(dto.payDay, 1);
     return this.calculateAndCheckWithDeposit({
       ...dto,
-      dueDay: nextPayDay,
+      payDay: nextPayDay,
+      currentDueDay: nextPayDay,
       loopType: LoopType.FORWARD,
     });
   }
 
   protected strategyForWeekend(dto: IPayDateCalculatorDTO): Date {
     const daysToAdd = dto.loopType === LoopType.REVERSE ? -1 : 1;
-    const newDueDate = addDays(dto.dueDay, daysToAdd);
-    return this.calculate({ ...dto, dueDay: newDueDate });
+    const newDueDate = addDays(dto.currentDueDay, daysToAdd);
+    return this.calculate({ ...dto, currentDueDay: newDueDate });
   }
 }
